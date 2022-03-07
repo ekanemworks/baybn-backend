@@ -9,7 +9,7 @@ var mysqlConnectionfidsbay = mysql.createConnection({
     host: 'localhost', //WEbsite can be inserted here
     user: 'root',
     password: '',
-    database: 'fidsoqgv_fidsbay.sql',
+    database: 'baybn',
     multipleStatements: true
 });
 

@@ -8,141 +8,199 @@ var upload = multer({ dest: 'image/' })
 
 router.use(cors()); 
 router.use(bodyparser.json());
+
+
 const date = require('date-and-time');
 const md5 = require('md5');
 const { v4: uuidv4 } = require('uuid');
+const nodemailer = require('nodemailer');
 
 
 // DATABASE CONNECTION
-var DATABASE_CONNECTION = require('../dbConnection')
+var DATABASE_CONNECTION = require('../dbConnection');
 var mysqlConnectionfidsbay = (DATABASE_CONNECTION);
 
+var transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'baybn.app@gmail.com',
+        pass: 'lordkanem766imortal'
+    }
+});
 
-
-const sql_check_password = "SELECT * FROM members WHERE password=? AND session=?";
-const sql_UPDATE_passsword = "UPDATE members SET password=? WHERE session=?";
-const sql_UPDATE_general1 = "UPDATE members  SET twitter = ?, instagram = ?, city = ? WHERE session = ?";
-const sql_UPDATE_general2 = "UPDATE members  SET twitter = ?, instagram = ? WHERE session = ?";
-
-
-// To send back to update localstorage
-// To send back to update localstorage
-const sql_get_user_info = "SELECT * FROM members WHERE session=?";
-
-   
-
-
-router.post('/password', (req,res) => {
-
-    var currentpw =  req.body.currentpw;
-    var newpw =  req.body.newpw;
-    var session = req.body.session;
-
-    currentpw = md5(currentpw);
-    newpw = md5(newpw);
-
-
-    // CHECK TO SEE IF PASSWORD IS CORRECT
-    // CHECK TO SEE IF PASSWORD IS CORRECT
-    // CHECK TO SEE IF PASSWORD IS CORRECT
-    try {
-            
-        mysqlConnectionfidsbay.query(sql_check_password,[currentpw,session],function (err,result,fields) {
-
-
-            // Condition to check result of query
-            if (result.length==1) {
-
-
-                // TO UPDATE THE PASSWORD
-                // TO UPDATE THE PASSWORD
-                try {
-                    mysqlConnectionfidsbay.query(sql_UPDATE_passsword,[newpw,session],function (err,result,fields) {
-
-                        // Get all user Data to upload local Storage userpayload
-                        // Get all user Data to upload local Storage userpayload
-                        mysqlConnectionfidsbay.query(sql_get_user_info,[req.body.session],function (err,rows,fields) {
-                            res.send({status: 'OK', body: rows[0]});
-                        });
-                        
-                    });
-                } catch (error) {
-                    
-                }
-
-
-            }else{
-                res.send({status: 'invalid', body: ''});
-            }
-            // End of condition check
-            
-        });
-
-    } catch (error) {
+router.use(cors()); 
         
-    }
 
-
-});
-
-
-
-
-
-
-
-
-
-router.post('/general', (req,res) => {
-
-    var instagram =  req.body.instagram;
-    var twitter =  req.body.twitter;
-    var city =  req.body.city;
-    var session =  req.body.session;
-
-
-    if (city === '') {
-
-        try {
-                
-            mysqlConnectionfidsbay.query(sql_UPDATE_general2,[twitter,instagram,session],function (err,result,fields) {
-
-
-                        // Get all user Data to upload local Storage userpayload
-                        // Get all user Data to upload local Storage userpayload
-                        mysqlConnectionfidsbay.query(sql_get_user_info,[req.body.session],function (err,rows,fields) {
-                            res.send({status: 'OK', body: rows[0]});
-                        });
-                        
-
-            });
-        } catch (error) {
+        router.post('/changePassword', (req,res) => {
             
-        }
-      
-    }else{
+            var currentpassword =  md5(req.body.currentpassword);
+            var newpassword =  md5(req.body.newpassword);
+            var session = req.body.session;
 
-        try {
-                
-            mysqlConnectionfidsbay.query(sql_UPDATE_general1,[twitter,instagram,city,session],function (err,result,fields) {
 
-                        // Get all user Data to upload local Storage userpayload
-                        // Get all user Data to upload local Storage userpayload
-                        mysqlConnectionfidsbay.query(sql_get_user_info,[req.body.session],function (err,rows,fields) {
-                            res.send({status: 'OK', body: rows[0]});
-                        });
+
+            const sql_get_current_password = "SELECT password FROM members WHERE session = ? ";
+            try {
+                mysqlConnectionfidsbay.query(sql_get_current_password,[session],function (err,result1,fields) {
+
+                    if (!err) {
                         
+                        if (result1[0].password == currentpassword) {
+                            
 
-            });
-        } catch (error) {
+                            const sql_set_new_password = "UPDATE members SET password = ? WHERE session = ? ";
+                            try {
+                                mysqlConnectionfidsbay.query(sql_set_new_password,[newpassword,session],function (err,result1,fields) {
+                
+                                    if (!err) {
+                                        res.send({status: 'ok', message: 'successful update'});
+                                    }else{
+                                        console.log(err);
+                                        res.send({status: 'error', message: 'database error'});
+                
+                                    }
+                
+                                });
+                
+                            } catch (error) {
+                                console.log(error);
+                                res.send({status: 'error', message: 'server error'});
+                
+                            }
+
+
+                        }else{
+                            res.send({status: 'ok', message: 'incorrect current password!'});
+                        }
+
+
+
+
+
+                    }else{
+                        console.log(err);
+                        res.send({status: 'error', message: 'database error'});
+
+                    }
+
+                });
+
+            } catch (error) {
+                console.log(error);
+                res.send({status: 'error', message: 'server error'});
+
+            }
+  
+        
+        
+        });  
+
+
+
+
+
+        router.post('/sendVerificationCodeToEmail', (req,res) => {
             
-        }
-    
-    }
+            var email = req.body.email;
+            var session = req.body.session;
+            var verificationCode = uuidv4().substr(0,4);
+
+            const sql_get_new_user = "UPDATE members SET email=?, verify_email_code = ? WHERE session = ?";
+            mysqlConnectionfidsbay.query(sql_get_new_user,[email,verificationCode, session],function (err,result3,fields) {
+                if (!err) {
+                     // PERFORM EMAIL VERIFICATION MAGIC
+                        var mailOptions = {
+                            from: 'no-reply@fidsbay.com',
+                            to: req.body.email,
+                            subject: 'Baybn: Email Verification ',
+                            html:  '<h1>Welcome to Baybn</h1> \
+                                    <div style="font-size:16px">\
+                                    \
+                                    <div>Hi,</div>    \
+                                    <div>Click the link below to verify your email address. </div><br>\
+                                    <div>. </div><br> \
+                                    <div style="margin-top:10px;">\
+                                    Confirm your email here \
+                                    <a href="https://www.baybn.com/verifyemail/'+verificationCode+'" style="padding:5px; text-decoration:none; background: #098223; color:#fff">Verify<a>\
+                                    </div>\
+                                    \
+                                    </div>\
+                                    '
+                            // text: ``
+                            
+                        }
+
+                        try {
+                                                            
+                            transporter.sendMail(mailOptions, function(error,info){
+                                    
+                                bodyResponse = {
+                                    status: 'ok',
+                                    body: {id: result3[0].id, session: newsession, username: result3[0].username},
+                                    direction: 'setup',
+                                    message: 'signup successful'
+                                }
+                                // console.log(bodyResponse);
+
+                                res.send(bodyResponse);
+
+                            }); 
+                        } catch (error) {
+                            console.log(error);
+                            res.send({status: 'error'});
+                        }
+                }else{
+                    console.log(err);
+                    res.send({status: 'error', message: 'database error'});
+                }
+            });
+
+           
+        
+        });  
 
 
 
 
-});
+
+        router.post('/changeHideStatus', (req,res) => {
+            
+            var hide_profile = req.body.hide_profile;
+            var session = req.body.session;
+            console.log(req.body);
+
+            if (hide_profile == true) {
+                hide_profile = 'on';
+            }else{
+                hide_profile = 'off';
+            }
+
+
+
+                            const sql_set_hide_profile = "UPDATE members SET hide_profile = ? WHERE session = ? ";
+                            try {
+                                mysqlConnectionfidsbay.query(sql_set_hide_profile,[hide_profile,session],function (err,result1,fields) {
+                
+                                    if (!err) {
+                                        console.log('ok');
+                                        res.send({status: 'ok', message: 'successful update'});
+                                    }else{
+                                        console.log(err);
+                                        console.log('error');
+
+                                        res.send({status: 'error', message: 'database error'});
+                
+                                    }
+                
+                                });
+                
+                            } catch (error) {
+                                console.log(error);
+                                res.send({status: 'error', message: 'server error'});
+                
+                            }
+        
+        
+        });  
 
 module.exports = router;

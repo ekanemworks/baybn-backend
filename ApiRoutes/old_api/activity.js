@@ -12,7 +12,7 @@ const date = require('date-and-time');
 
 
 // DATABASE CONNECTION
-var DATABASE_CONNECTION = require('../dbConnection')
+var DATABASE_CONNECTION = require('../../dbConnection')
 var mysqlConnectionfidsbay = (DATABASE_CONNECTION);
 
 

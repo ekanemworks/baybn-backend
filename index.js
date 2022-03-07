@@ -29,34 +29,123 @@ app.use('/photo_categories', express.static(__dirname + '/photo_categories'));
 app.use('/promotionadsphoto', express.static(__dirname + '/promotionadsphoto'));
 
 
-const http = require('http');
+// MAINLY FOR CHAT SOCKET IO REALTIME
+// const express = require('express');
+const appp = express();
+const server=require('http').createServer(appp);
+io = require('socket.io')(server, {
+    upgradeTimeout: 50000,
+  cors:{
+      origin:"*"
+  },
+});
+
+
+var clients = {};
+
+io.on('connection', (socket) => { 
+    // console.log(socket.id);
+    console.log(socket.id+' joinned the chat server');
+
+
+    socket.on('signin',(id)=>{
+        console.log(id);
+        clients[id]=socket;
+        // console.log(clients);
+    });
+
+    socket.on('disconnect',()=>{
+        console.log("Disconnected", socket.id);
+    });
+
+    socket.on('message',(msg)=>{
+        console.log(msg);
+        let targetId = msg.baybnTargetId;
+
+        // TO ONLY EMIT IF RECIEVER IS KNOWN
+        if (clients[targetId]) {
+            clients[targetId].emit('message-received', msg);
+        }
+        // socket.broadcast.emit('message-receive',data);
+    });
+
+});
+
+
+// server.listen(3001, () => {
+//   console.log("Chat Server is running...");
+ 
+// });
+server.listen(3001, '192.168.0.126', ()=> {console.log("Chat Server is running... IP")});
+// server.listen(3001, '192.168.8.197', ()=> {console.log("Chat Server is running... IP")});
+
+
+// const app2 = express();
+// const PORT = process.env.PORT || 4000;
+// const server = app2.listen(PORT,()=>{
+//     console.log('server started', PORT);
+// })
+// const http = require('http');
+
+// const io = require('socket.io')(server);
+
+// io.on('connection',(socket)=>{
+//     console.log("connected successfully", socket.id);
+// });
+
+// var app_2 = express();
+// var chatserver = http.createServer(app_2)
+// const io = require('socket.io')(chatserver);
+// app_2.use(express.json());
+
+
+// io.on("connection", (socket) => {
+//     console.log(socket.id);
+//     console.log('connected');
+
+//     socket.on("signin", (data) => {
+//         console.log(data);
+//     })
+
+// });
+
+// chatserver.listen(3001, () => console.log('chat socket-server running'));
+
+
+
+
+
 
 
 
 mysqlConnectionfidsbay.connect((err) => {
     if (!err) {
-        console.log('Connected');
+        console.log('Database Connected');
         console.log('...');
     }else{
+        console.log(err)
         console.log('Error dey o: Db not connecting to node server');
     }
 });
 
-app.listen(3000, () => console.log('Running'));
+
+// app.listen(3000, () => console.log('App Server Running'));
 
 // RUN ON LOCAL MACHINE
-// app.listen(3000, '192.168.0.101', ()=> console.log("running"));
+app.listen(3000, '192.168.0.126', ()=> console.log("App server running on IP"));
+// app.listen(3000, '192.168.8.197', ()=> console.log("App server running on IP")); // COUSANT WIFI
 // http.createServer(onRequest).listen(8888,'192.168.0.102');
+
+
+
+
+
+
 
 
 app.get('/',(req,res) => {
     res.send('The App')
 })
-
-app.get('/waveone',(req,res) => {
-    res.send('hello my neighbour')
-})
-
 
 // app.options('/setupBusinessProfilephoto', function (req, res) {
 //     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -64,6 +153,12 @@ app.get('/waveone',(req,res) => {
 //     res.setHeader("Access-Control-Allow-Headers", "*");
 //     res.end();
 //   });
+
+
+
+// app.post('/sendStatusText', (req,res) => {
+
+// });
 
 
 // FOR SETUP BUSINESS PROFILE PHOTO
@@ -412,54 +507,110 @@ app.post('/deleteProductPhoto', (req, res) => {
 // FOR UPDATE PROFILE PHOTO
 // FOR UPDATE PROFILE PHOTO
 app.post('/updateProfilePhoto', (req, res) => {
-   
-    var form = new formidable.IncomingForm()
-    form.parse(req)
-    form.on('fileBegin', function (name, file) {
+   console.log('entered');
+   var base64ImageVariable =  req.body.image;
+   var session = req.body.session;
+   var randomvariable = uuidv4();
+   randomvariable = randomvariable.substr(0,4);
+   var imagePathOnDB = '';
 
-        // FOR DELETING AND MANAGING FILES
-        // FOR DELETING AND MANAGING FILES
-        var curr_img_a = __dirname + '/profilephotos/user_' + file.name + '_a.jpg';
-        var curr_img_b = __dirname + '/profilephotos/user_' + file.name + '_b.jpg';
-        var curr_img_c = __dirname + '/profilephotos/user_' + file.name + '_c.jpg';
 
-            if (fs.existsSync(curr_img_a)) {
-              
-            var newFilename = 'user_'+file.name+'_b.jpg';
-            fs.unlinkSync(curr_img_a);
-            // console.log('b')
 
-            }else if (fs.existsSync(curr_img_b)) {
+            // function to decode base64
+            // function to decode base64
+            function decodeBase64Image(dataString) {
+                // var matches = dataString.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/),
+                // response = {};
             
-                var newFilename = 'user_'+file.name+'_c.jpg';
-                fs.unlinkSync(curr_img_b);
-                // console.log('c')
-                
-                
-            }else if (fs.existsSync(curr_img_c)) {
-        
-            var newFilename = 'user_'+file.name+'_a.jpg';
-            fs.unlinkSync(curr_img_c);
-            // console.log('a')
+                // if (matches.length !== 3) {
+                // return new Error('Invalid input string');
+                // }
             
-            }else{
-
-            var newFilename = 'user_'+file.name+'_a.jpg';
+                // response.type = matches[1];
+                response = new Buffer.from(dataString, 'base64');
+            
+                return response;
             }
+            // end of function to decode base64
+            // end of function to decode base64
+
+        var decodedImg = decodeBase64Image(base64ImageVariable);
+        var imageBuffer = decodedImg;
+        
+
             
-            var DB_img_path = 'profilephotos/'+newFilename;
+        try {
+            mysqlConnectionfidsbay.query("SELECT id FROM members WHERE session = ?",[session],function (err,rows,fields) {
 
-            mysqlConnectionfidsbay.query("UPDATE members SET profilephoto=? WHERE id=?",[DB_img_path,file.name],function (err,rows,fields) {
+                if (!err) {
+                    
+                    var userid = rows[0].id;
+                    var curr_img_a = __dirname+'/profilephotos'+'/'+ 'user_'+userid+'_CODE_A.jpg';
+                    var curr_img_b = __dirname+'/profilephotos'+'/'+ 'user_'+userid+'_CODE_B.jpg';
+    
+                    if (fs.existsSync(curr_img_a)) {
+                  
+                        fs.unlinkSync(curr_img_a);
+                        fs.writeFileSync(curr_img_b, imageBuffer, 'utf8');
+                        imagePathOnDB = 'profilephotos'+'/'+ 'user_'+userid+'_CODE_B.jpg';
+                       
+                    }else if(fs.existsSync(curr_img_b)){
+                        
+                        fs.unlinkSync(curr_img_b);
+                        fs.writeFileSync(curr_img_a, imageBuffer, 'utf8');
+                        imagePathOnDB = 'profilephotos'+'/'+ 'user_'+userid+'_CODE_A.jpg';
 
+                    }else{
+                        fs.writeFileSync(curr_img_a, imageBuffer, 'utf8');
+                        imagePathOnDB = 'profilephotos'+'/'+ 'user_'+userid+'_CODE_A.jpg';
+                    }
+
+
+
+                    mysqlConnectionfidsbay.query("UPDATE members SET profilephoto = ? WHERE session = ?",[imagePathOnDB,session],function (err,rows,fields) {
+
+                        if (!err) {
+                            
+                            res.send({
+                                status: 'ok',
+                                body: {imagePathOnDB: imagePathOnDB},
+                                message: 'Update successfully'
+                            })
+
+                        }else{
+                            console.log(err);
+                            res.send({
+                                status: 'error',
+                                message: 'Database error!'
+                            });
+                        }
+            
+                    });
+    
+    
+    
+                }else{
+                    console.log(err);
+                    res.send({
+                        status: 'error',
+                        message: 'Database error!'
+                    });
+                }
+    
             });
-            
-        file.path = __dirname + '/profilephotos/'+newFilename;
+        } catch (error) {
+            console.log(error);
+            res.send({
+                status: 'error',
+                message: 'server error'
+            })
+        }  
+        
 
-    res.send(JSON.stringify('profilephotos/'+newFilename));
-    })
+     
 
 
-  }); //End of setup business profile photo
+}); //End of setup business profile photo
 
 
 
